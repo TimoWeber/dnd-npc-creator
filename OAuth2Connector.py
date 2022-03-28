@@ -3,12 +3,15 @@ from oauthlib.oauth2.rfc6749.endpoints import token
 from oauthlib.oauth2.rfc6749.tokens import get_token_from_header
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import TokenExpiredError
+from rich.console import Console
 import configparser
 import json
 import os
 import sys
+import Logger
 
 class OAuth2Connector:
+    console = Console()
     token = ""
     onenote = ""
     token_file_name = "token.json"
@@ -33,23 +36,23 @@ class OAuth2Connector:
         auth_config = config['oauth']
 
         if 'client_id' not in auth_config or 'PLACEHOLDER' == auth_config['client_id']:
-            print("ERROR: Please set the \"client_id\" in the corresponding ini file found here: " + self.configs)
+            Logger.error("Please set the \"client_id\" in the corresponding ini file found here: " + self.configs)
             sys.exit()
         else:
             self.client_id = auth_config['client_id']
             
         if 'client_secret' not in auth_config:
-            print("ERROR: Please set the \"client_secret\" in the corresponding ini file found here: " + self.configs)
+            Logger.error("Please set the \"client_secret\" in the corresponding ini file found here: " + self.configs)
             sys.exit()
         else:
             self.client_secret = auth_config['client_secret']
 
-    """
-    This Method has to be used once to create a token and a refresh token.
-    These will be stored in a local file. Another token will not have to be created this way unless the refresh token expires.
-    Use OAuth2Connector.load_token after you created a token.
-    """
     def create_token(self):
+        """
+        This Method has to be used once to create a token and a refresh token.
+        These will be stored in a local file. Another token will not have to be created this way unless the refresh token expires.
+        Use OAuth2Connector.load_token after you created a token.
+        """
         #self.check_token()
         os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
         one_note = OAuth2Session(self.client_id, scope=self.scope, redirect_uri=self.redirect_uri)
@@ -74,10 +77,10 @@ class OAuth2Connector:
         one_note = OAuth2Session(client_id = self.client_id, token=self.token)
 
         try:
-            print('Trying to use saved token..')
+            Logger.info('Trying to use saved token..')
             r = one_note.get(self.protected_url)
         except TokenExpiredError as e:
-            print("Saved token expired. Trying to refresh the token..")
+            Logger.info("Saved token expired. Trying to refresh the token..")
             extra = {
                 'client_id': self.client_id,
                 'client_secret': self.client_secret,

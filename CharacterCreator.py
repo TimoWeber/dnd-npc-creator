@@ -5,9 +5,10 @@ import mechanize
 import requests
 import unicodedata
 import time
-from pprint import pp, pprint
+from pprint import pp
 from bs4 import BeautifulSoup
 import concurrent.futures
+import Logger
 
 class CharacterCreator:
     def create(self, character_name):
@@ -18,42 +19,42 @@ class CharacterCreator:
         """
         total_start_time = time.perf_counter()
 
-        print("Fetching character.. ", end="", flush=True)
+        Logger.info_no_nl("Fetching character.. ")
         start_time = time.perf_counter()
         soup = self.fetch_character(character_name)
-        print("%.2fs" % (time.perf_counter() - start_time))
+        duration = "%.2fs" % (time.perf_counter() - start_time)
+        Logger.grey(duration)
 
-        print("Cleaning up HTML.. ", end="", flush=True)
+        Logger.info("Cleaning up HTML.. ", end="")
         start_time = time.perf_counter()
         self.soup_cleanup(soup)
-        print("%.2fs" % (time.perf_counter() - start_time))
+        Logger.grey("%.2fs" % (time.perf_counter() - start_time))
 
         character_array = {}
 
-        print("Reading main stats..", end="", flush=True)
+        Logger.info("Reading main stats..", end="")
         start_time = time.perf_counter()
         character_array['main_stats'] = self.get_main_stats(character_name, soup)
-        print("%.2fs" % (time.perf_counter() - start_time))
+        Logger.grey("%.2fs" % (time.perf_counter() - start_time))
 
-        print("Reading combat stats..", end="", flush=True)
+        Logger.info("Reading combat stats..", end="")
         start_time = time.perf_counter()
         character_array['combat'] = self.get_combat_stats(soup)
-        print("%.2fs" % (time.perf_counter() - start_time))
+        Logger.grey("%.2fs" % (time.perf_counter() - start_time))
 
         start_time = time.perf_counter()
         character_array['ability'] = self.get_ability_stats_multithread(soup)
         finish = time.perf_counter()
-        print("Abilities multithread took %.2fs" % (finish - start_time))
+        Logger.info("Abilities multithread took %.2fs" % (finish - start_time))
         
-        print("Reading other stats..", end="", flush=True)
+        Logger.info("Reading other stats..", end="")
         start_time = time.perf_counter()
         character_array['other'] = self.get_other_stats(soup)
-        print("%.2fs" % (time.perf_counter() - start_time))
+        Logger.grey("%.2fs" % (time.perf_counter() - start_time))
 
         #pp(character_array, width=150)
 
-        print()
-        print("Complete creation took %.2fs!" % (time.perf_counter() - total_start_time))
+        Logger.info("Complete creation took [underline]%.2fs[/ underline]!" % (time.perf_counter() - total_start_time))
         print()
 
         return character_array

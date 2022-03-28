@@ -1,75 +1,65 @@
-from requests_oauthlib.oauth2_session import OAuth2Session
 from OAuth2Connector import OAuth2Connector
 from CharacterCreator import CharacterCreator
-import argparse
 from pprint import pp
 from prettytable import PrettyTable
 from bs4 import BeautifulSoup
-import configparser
+from rich.console import Console
+from configparser import ConfigParser
+import Logger
+
+from processors import ArgsTask
+import configs.Switches as switches
 
 class App:
+    console = Console()
     auth_connector =  OAuth2Connector()
     args = None
     verbose = False
     character_creator = CharacterCreator()
 
     def main(self):
-        parser = argparse.ArgumentParser(description='Create dnd nps easily.')
-        parser.add_argument('-ct',"--createtoken", action="store_true")
-        parser.add_argument('-cc',"--createcharacterpage", action="store_true")
-        parser.add_argument('-vb',"--verbose", action="store_true")
-        self.args, _ = parser.parse_known_args()
+        args = ArgsTask.process(self.auth_connector)
+
+        if args.createcharacterpage == True:
+            Logger.info("Creating character..")
+
+            self.create_character_page()
+
+    def create_character_page(self):
+        config = ConfigParser()
+        config.read('configs/configs.ini')
+        section_id = config['onenote']['section_id']
+        url = 'https://graph.microsoft.com/v1.0/me/onenote/sections/'+ section_id +'/pages'        
+
+        onenote = self.auth_connector.get_onenote_session()
         
-        self.verbose = self.args.verbose
-
-        if self.args.createtoken == True:
-            if self.verbose:
-                print("A new OneNote API token will be created..")
-            self.auth_connector.create_token()
-        else:
-            if self.verbose:
-                print("Loading token..")
-            self.auth_connector.token_is_expired()
- 
-        if self.args.createcharacterpage == True:
-            if self.verbose:
-                print("Creating character..")
-            onenote = self.auth_connector.get_onenote_session()
-
-            config = configparser.ConfigParser()
-            config.read('configs/configs.ini')
-
-            self.create_character_page(config['onenote']['section_id'], onenote)
-
-    def create_character_page(self, section_id, onenote: OAuth2Session):
-        url = 'https://graph.microsoft.com/v1.0/me/onenote/sections/'+ section_id +'/pages'
         character_creator = CharacterCreator()
    
-        character_name = input("What is your characters name? (Leave empty for random name) \n")
+        character_name = self.console.input("[orange1][ INPUT ] What is your characters name? (Leave empty for random name)[/orange1] \n")
         
-        print("Creating Character..")
+        Logger.info("Creating Character..")
 
         character = character_creator.create(character_name=character_name)
 
         if self.verbose:
-            print("Character created..")
+            Logger.info("Character created..")
             pp(character)
         
         data = self.character_html_builder(character)
-        if self.verbose:
-            print("Created HTML:")
+        if switches.verbose:
+            Logger.info("Created HTML:")
             pp(data)
 
         response = onenote.post(url=url, data=data, json={'title': 'presentation'}, headers={"Content-type":"text/html"})
-        if self.verbose:
-            print("Posted character to onenote")
+        if switches.verbose:
+            Logger.info("Posted character to onenote")
             pp(response.json())
         
         code = response.status_code
         if code == 201:
-            print("Success! Your character has been created! Refresh your notebook and enjoy!")
+            Logger.info("[green]Success![/ green] Your character has been created! Refresh your notebook and enjoy!")
         else:
-            print("Response Code: " + code)
+            Logger.error("Response Code: " + code)
             pp(response.json())
 
     
